@@ -1,4 +1,4 @@
-#  for **Real time face recognition**
+#Real time face recognition
 Face detector and feature extractor are implemented by Tensorflow
 
 ## Installation:
