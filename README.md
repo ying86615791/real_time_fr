@@ -1,5 +1,5 @@
 # Real time face recognition
-Face detector and feature extractor are implemented by Tensorflow
+Face detector and feature extractor are implemented by Tensorflow.
 
 ## Installation:
     1. Install opencv3, tensorflow and etc.
