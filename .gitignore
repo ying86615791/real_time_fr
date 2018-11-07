@@ -3,4 +3,4 @@ __pycache__
 models/*
 !models/readme.txt
 images/*
-!images
+!images/readme.txt
