@@ -20,8 +20,10 @@ class FaceFeature(object):
         :param model_path:
         '''
         print("Loading model...")
-        with face_rec_graph.graph.as_default():
-            self.sess = tf.Session()
+        with face_rec_graph.as_default():
+            config = tf.ConfigProto()
+            config.gpu_options.allow_growth = True
+            self.sess = tf.Session(config=config)
             self.x = tf.placeholder('float', [None,160,160,3]); #default input for the NN is 160x160x3
             self.embeddings = tf.nn.l2_normalize(
                                         resnet.inference(self.x, 0.6, phase_train=False, bottleneck_layer_size=512)[0], 1, 1e-10); #some magic numbers that u dont have to care about

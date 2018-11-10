@@ -4,3 +4,5 @@ models/*
 !models/readme.txt
 images/*
 !images/readme.txt
+ssl_key_dir/*
+!ssl_key_dir/nginx使用ssl模块配置HTTPS支持.txt

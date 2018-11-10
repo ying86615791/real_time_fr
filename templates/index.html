@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta charset="utf-8" />
+        <title>{{title}}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    </head>
+
+    <body>
+        <video id="video" width="640" height="480" autoplay></video>
+        <button id="snap">Snap Photo</button>
+        <canvas hidden="hidden" id="canvas" width="640" height="480"></canvas>
+        <img id="target" />
+        {{title}}
+        <p id="flask_return">This is for flask fr return.</p>
+     </body>
+
+    <script type="text/javascript">
+    //websocket
+    // var ws = new WebSocket("ws://" + location.host + "/fr");
+    // ws.binaryType = "arraybuffer";
+    // ws.onopen = function() {
+    //     ws.send("I'm client");
+    // };
+    // ws.onmessage = function (evt) {
+    //     // var bytes = new Uint8Array(evt.data);
+    //     // var data = "";
+    //     // var len = bytes.byteLength;
+    //     // for (var i = 0; i < len; ++i) {
+    //     //     data += String.fromCharCode(bytes[i]);
+    //     // }
+    //     var img = document.getElementById("target");
+    //     // img.src = "data:image/jpeg;base64,"+evt.data;
+    //     img.src = evt.data;
+    //     // document.getElementById("flask_return").innerHTML = evt.data;
+    // };
+    // ws.onclose = function() {
+    //     alert("Closed");
+    // };
+    // ws.onerror = function(err) {
+    //     alert("Error: " + err);
+    // };
+
+
+    // Grab elements, create settings, etc.
+    var video = document.getElementById('video');
+
+    // Get access to the camera!
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // Not adding `{ audio: true }` since we only want video now
+        navigator.mediaDevices.getUserMedia({ video: true }).then(function(stream) {
+            video.src = window.URL.createObjectURL(stream);
+            video.play();
+        });
+    }
+
+    // Elements for taking the snapshot
+    var canvas = document.getElementById('canvas');
+    var context = canvas.getContext('2d');
+    var video = document.getElementById('video');
+    // Trigger photo take
+    document.getElementById("snap").addEventListener("click", function() {
+        context.drawImage(video, 0, 0, 640, 480);
+        var dataURL = canvas.toDataURL('image/jpeg', 1.0);
+        var fd = new FormData();
+        fd.append("image", dataURL);
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/fr', true);
+        xhr.onload  = function() {
+           var jsonResponse = JSON.parse(xhr.responseText);
+           alert(jsonResponse.data);
+           document.getElementById("target").src = "data:image/jpeg;base64,"+jsonResponse.data;
+        };
+        xhr.send(fd);
+    });
+
+
+    timer = setInterval(
+            function () {
+                //讲摄像头画到canvas
+                context.drawImage(video, 0, 0, 640, 480);
+                var dataURL = canvas.toDataURL('image/jpeg', 1.0);
+                // document.getElementById("target").src = "data:image/jpeg;base64, {{ result.out_img_url }}";
+                // document.getElementById("target").src = dataURL
+                //发送请求
+
+                // ws.send(dataURL);
+                // alert(55);
+                var fd = new FormData();
+                fd.append("image", dataURL);
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/fr', true); //for POST
+                // xhr.open('GET', '/fr?image='+dataURL, true);
+                //请求完成响应
+                xhr.onload  = function() {
+                    // alert(55);//nginx有到达这一步
+                    var jsonResponse = JSON.parse(xhr.responseText);
+                    // alert(jsonResponse.data);
+                    //将返回的图片绑定到target
+                    document.getElementById("target").src = "data:image/jpeg;base64,"+jsonResponse.data;
+                    // document.getElementById("flask_return").innerHTML = jsonResponse.data;
+                };
+                xhr.send(fd);//for POST
+                // xhr.send(null);//for GET
+            }, 40); //刷新时间
+
+    function dataURItoBlob(dataURI) {
+        // convert base64/URLEncoded data component to raw binary data held in a string
+        var byteString;
+        if (dataURI.split(',')[0].indexOf('base64') >= 0)
+            byteString = atob(dataURI.split(',')[1]);
+        else
+            byteString = unescape(dataURI.split(',')[1]);
+
+        // separate out the mime component
+        var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+        // write the bytes of the string to a typed array
+        var ia = new Uint8Array(byteString.length);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+
+        return new Blob([ia], {type:mimeString});
+    }
+
+</script>
+</html>
