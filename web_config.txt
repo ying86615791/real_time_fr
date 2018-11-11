@@ -4,6 +4,10 @@ sudo apt-get install nginx
 安装uWSGI
 sudo apt-get install build-essential python-dev
 sudo pip install uwsgi(这个先激活对应的python环境，保证安装在同一个环境中: source activate tfpy3)
+uwsgi安装错误:compiler_compat/ld: error: lto-wrapper failed, 把gcc改为4.7
+解决:https://www.e-learn.cn/content/python/376420
+
+
 开始
 1.source activate tfpy3 #激活anaconda的对应的python环境, 所有的python操作都是在这个环境中完成的
 
@@ -50,7 +54,7 @@ vacuum = true
 die-on-term = true
 
 2.3启动uwsgi
-uwsgi --socket 127.0.0.1:5001 --protocol=http -module web_main:app
+uwsgi --socket 127.0.0.1:5001 --protocol=http --module web_main:app
 或者根据创建的uwsgi.ini
 uwsgi --ini uwsgi.ini
 
