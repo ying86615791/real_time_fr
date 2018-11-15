@@ -8,52 +8,26 @@ uwsgi安装错误:compiler_compat/ld: error: lto-wrapper failed, 把gcc改为4.7
 解决:https://www.e-learn.cn/content/python/376420
 
 
+
+
 开始
 1.source activate tfpy3 #激活anaconda的对应的python环境, 所有的python操作都是在这个环境中完成的
 
-
 2.uwsgi配置
-	2.1(可以跳过不看) 项目目录下创建
-	uwsgi.ini:
-
-	[uwsgi]
-	module = main:app #指定py文件中的app
-	master = true
-	processes = 3 #worker的进程个数
-
-	home=/home/hy/anaconda2/envs/tfpy3/bin # 环境路径
-	chdir = /home/hy/fr_tf #工程目录
-	socket = /home/hy/fr_tf/uwsgi/uwsgi.sock #socket文件，配置nginx时候使用。这个文件用来和 Nginx 通信，后面会在配置 Nginx 时用到，所以 chmod-socket = 660 是为了修改 .sock 文件权限来和 Nginx 通信
-	socket = 127.0.0.1:5000 #发现上面的socket不能用，要用flask的app指定的
-	#使用HTTP访问的端口号, 使用这个端口号是直接访问了uWSGI, 绕过了Nginx
-	http = :8010
-	#与外界连接的端口号, Nginx通过这个端口转发给uWSGI
-	socket = 127.0.0.1:8001
-	logto = /home/hy/fr_tf/uwsgi/uwsgi.log #指明了 uwsgi 日志目录，uwsgi 会将请求历史写入该文件
-	disable-logging = True #关闭request向logto文件输出
-	chmod-socket = 660
-	vacuum = true #We'll also add the vacuum option, which will remove the socket when the process stops
-
-	错误提示：
-	1.uwsgi启动提示找不到libpcre.so.1解决方法
-	解决：添加lib路径到变量中
-	export LD_LIBRARY_PATH="/home/hy/anaconda2/envs/tensorflow/lib/:$LD_LIBRARY_PATH"
-
-2.2最后用这个,通过http代理
+2.1项目目录下创建uwsgi.ini, 输入以下内容:
 [uwsgi]
 module = web_main:app
-#master = true
+#master = true #master为True,则ajax无法请求
 processes = 1
 
-#http = :5002 
 chdir = /home/hy/fr_tf
-http-socket = 127.0.0.1:5001
+socket = 127.0.0.1:5001
 logto = /home/hy/fr_tf/uwsgi/uwsgi.log
-#chmod-socket = 660
+chmod-socket = 660
 vacuum = true
 die-on-term = true
 
-2.3启动uwsgi
+2.2启动uwsgi
 uwsgi --socket 127.0.0.1:5001 --protocol=http --module web_main:app
 或者根据创建的uwsgi.ini
 uwsgi --ini uwsgi.ini
@@ -61,40 +35,59 @@ uwsgi --ini uwsgi.ini
 
 
 3.nginx配置
-	3.1(可以跳过不看) sudo gedit /etc/nginx/sites-enabled/default
+3.1 sudo gedit /etc/nginx/sites-enabled/default
+location / {
+	# try_files $uri $uri/ =404; #注意把这行注释掉!
+	include uwsgi_params;
+	uwsgi_pass 127.0.0.1:5001;#flask app的地址
+	# proxy_pass http://localhost:5001; #可以把上面两个注释掉,用这个,对应uwsgi把socket改为http-socket
+}
 
-			location / {
-				# First attempt to serve request as file, then
-				# as directory, then fall back to displaying a 404.
-				try_files $uri $uri/ =404;
-				include uwsgi_params;
-				uwsgi_pass 127.0.0.1:5001;#flask app的地址
-				#uwsgi_pass unix:/home/hy/fr_tf/uwsgi/uwsgi.sock;
-			}
-关于try_files $uri $uri/
-以 try_files $uri $uri/ /index.php; 为例，当用户请求 http://servers.blog.ustc.edu.cn/example 时，这里的 $uri 就是 /example。try_files 会到硬盘里尝试找这个文件。如果存在名为 /$root/example（其中 $root 是 WordPress 的安装目录）的文件，就直接把这个文件的内容发送给用户。显然，目录中没有叫 example 的文件。然后就看 $uri/，增加了一个 /，也就是看有没有名为 /$root/example/ 的目录。又找不到，就会 fall back 到 try_files 的最后一个选项 /index.php，发起一个内部 “子请求”，也就是相当于 nginx 发起一个 HTTP 请求到 
-			# 所有跨域访问以 /fr 开头(在主页'/'上不停的请求'/fr'涉及到了跨域请求)
-			location /fr {
-				# 请求改写
-				#rewrite ^/fr/(.*)$ /$1 break;
-				#proxy_pass http://localhost:5001;
-				include uwsgi_params;
-				uwsgi_pass 127.0.0.1:5001;
-			}
-3.2最后用这个,http代理
-	location / {
-		# First attempt to serve request as file, then
-		# as directory, then fall back to displaying a 404.
-		# try_files $uri $uri/ =404;
-        	# include uwsgi_params;
-        	# uwsgi_pass 127.0.0.1:5001;
-		proxy_pass http://localhost:5001;
-	}
-	nginx命令
-	sudo /etc/init.d/nginx start
-	sudo /etc/init.d/nginx restart
-	sudo /etc/init.d/nginx reload
-(chrome显示http not secure?, 需要把连接设置为https参考https://blog.csdn.net/chenggong2dm/article/details/54583984, 添加ssl配置, 并且把监听端口改为443)
-3.3启动nginx
+nginx命令
+sudo /etc/init.d/nginx start
+sudo /etc/init.d/nginx restart
+sudo /etc/init.d/nginx reload
+3.2启动nginx
 sudo /etc/init.d/nginx start
 
+
+
+
+
+
+
+uwsgi.ini参数解释:
+
+[uwsgi]
+module = main:app #指定py文件中的app
+master = true
+processes = 3 #worker的进程个数
+
+home=/home/hy/anaconda2/envs/tfpy3/bin # 环境路径
+chdir = /home/hy/fr_tf #工程目录
+socket = /home/hy/fr_tf/uwsgi/uwsgi.sock #socket文件，配置nginx时候使用。这个文件用来和 Nginx 通信，后面会在配置 Nginx 时用到，所以 chmod-socket = 660 是为了修改 .sock 文件权限来和 Nginx 通信
+socket = 127.0.0.1:5000 #发现上面的socket不能用，要用flask的app指定的
+#使用HTTP访问的端口号, 使用这个端口号是直接访问了uWSGI, 绕过了Nginx
+http = :8010
+#与外界连接的端口号, Nginx通过这个端口转发给uWSGI
+socket = 127.0.0.1:8001
+logto = /home/hy/fr_tf/uwsgi/uwsgi.log #指明了 uwsgi 日志目录，uwsgi 会将请求历史写入该文件
+disable-logging = True #关闭request向logto文件输出
+chmod-socket = 660
+vacuum = true #We'll also add the vacuum option, which will remove the socket when the process stops
+
+
+
+
+关于nginx的try_files $uri $uri/
+以 try_files $uri $uri/ /index.php; 为例，当用户请求 http://servers.blog.ustc.edu.cn/example 时，这里的 $uri 就是 /example。try_files 会到硬盘里尝试找这个文件。如果存在名为 /$root/example（其中 $root 是 WordPress 的安装目录）的文件，就直接把这个文件的内容发送给用户。显然，目录中没有叫 example 的文件。然后就看 $uri/，增加了一个 /，也就是看有没有名为 /$root/example/ 的目录。又找不到，就会 fall back 到 try_files 的最后一个选项 /index.php，发起一个内部 “子请求”，也就是相当于 nginx 发起一个 HTTP 请求到 
+
+
+
+
+错误：
+1.uwsgi启动提示找不到libpcre.so.1解决方法
+解决：添加lib路径到变量中
+export LD_LIBRARY_PATH="/home/hy/anaconda2/lib/:$LD_LIBRARY_PATH"(不一定是这个,用sudo find /home/hy -name libpcre.so.1搜索)
+
+2.chrome显示http not secure?, 需要把连接设置为https参考https://blog.csdn.net/chenggong2dm/article/details/54583984, 添加ssl配置, 并且把监听端口改为443

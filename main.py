@@ -15,7 +15,7 @@ import numpy as np
 import json
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
+import cv2
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -25,7 +25,7 @@ class FR_Service(object):
         self.feature_extractor = FaceFeature(FRGraph)# 先FaceFeature再face_detect 因为model里面没有face_detect的权重
         self.face_detector = MTCNNDetect(FRGraph, scale_factor=2) # scale_factor, rescales image for faster detection
         self.face_aligner = AlignCustom()
-        self.feature_gallery_filepath = "images/gallery_feats_512D.txt" # 用来存放注册的人脸特征
+        self.feature_gallery_filepath = "images/gallery_feats_512D.txt" # for store faces' features
         self.register_gallery()
 
     def register_gallery(self):
@@ -116,61 +116,54 @@ def FRwithrects(FRS, img_arr, rects, landmarks):
         recog_data = FRS.findPeople(features_arr, positions)
     return recog_data
 
-def test():
+def test(FRS):
     # === test for one image
-    im_path = "images/Group_Photo_2017.jpg"
-    img = sm.imread(im_path)
-    img = sm.imresize(img, [600,int(img.shape[1]*1.0/img.shape[0]*600)])
-    pim = Image.fromarray(img)
-    print(type(img))
-    print(type(pim))
-    if isinstance(pim, Image.Image):
-        print(55555)
-    # draw.rectangle(((50, 50), (200, 100)), fill=None)
-    # pim.show()
+    # im_path = "images/Group_Photo_2017.jpg"
+    # img = sm.imread(im_path)
+    # img = sm.imresize(img, [600,int(img.shape[1]*1.0/img.shape[0]*600)])
     # rects, landmarks = FRS.face_detector.detect_face(img, 20)  # min face size is set to 80x80, rect in rects: (x,y,w,h)
-
+    #
     # aligned_face, face_pos = FRS.face_aligner.align(160, img, landmarks[0])
     # aligns = [aligned_face]
     # positions = [face_pos]
     # features_arr = FRS.feature_extractor.get_features(aligns)
-    # # plt.figure(figsize=(9, 6), dpi=90)
-    # # plt.imshow(aligned_face)
-    # # plt.show()
+    # plt.figure(figsize=(9, 6), dpi=90)
+    # plt.imshow(aligned_face)
+    # plt.show()
     # result = FRS.findPeople(features_arr, positions)
     # print(result)
 
 
     # === test for real time camara
-    # vs = cv2.VideoCapture(0) # get input from webcam
-    # while True:
-    #     _, frame = vs.read()
-    #     # get detected and aligned faces
-    #     rects, landmarks = FRS.face_detector.detect_face(frame, 80)
-    #     aligns = []
-    #     positions = []
-    #     for (i, rect) in enumerate(rects):
-    #         aligned_face, face_pos = FRS.face_aligner.align(160,frame,landmarks[i])
-    #         if len(aligned_face) == 160 and len(aligned_face[0]) == 160:
-    #             aligns.append(aligned_face)
-    #             positions.append(face_pos)
-    #         else:
-    #             print("Align face failed") #log
-    #     # extract features and show recognition result
-    #     if(len(aligns) > 0):
-    #         features_arr = FRS.feature_extractor.get_features(aligns)
-    #         recog_data = FRS.findPeople(features_arr,positions)
-    #         for (i,rect) in enumerate(rects):
-    #             cv2.rectangle(frame,(rect[0],rect[1]),(rect[0] + rect[2],rect[1]+rect[3]),(255,0,0)) #draw bounding box for the face
-    #             str_displayed = recog_data[i][0] + "-" + str(100* round(recog_data[i][1],4) ) + "%" # recog_data[i][0]+" - "+str(recog_data[i][1])+"%"
-    #             cv2.putText(frame,str_displayed,(rect[0],rect[1]),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),1,cv2.LINE_AA)
-    #
-    #     cv2.imshow("Frame", frame)
-    #     key = cv2.waitKey(1) & 0xFF
-    #     if key == ord("q"):
-    #         break
+    vs = cv2.VideoCapture(0) # get input from webcam
+    while True:
+        _, frame = vs.read()
+        # get detected and aligned faces
+        rects, landmarks = FRS.face_detector.detect_face(frame, 40)
+        aligns = []
+        positions = []
+        for (i, rect) in enumerate(rects):
+            aligned_face, face_pos = FRS.face_aligner.align(160,frame,landmarks[i])
+            if len(aligned_face) == 160 and len(aligned_face[0]) == 160:
+                aligns.append(aligned_face)
+                positions.append(face_pos)
+            else:
+                print("Align face failed") #log
+        # extract features and show recognition result
+        if(len(aligns) > 0):
+            features_arr = FRS.feature_extractor.get_features(aligns)
+            recog_data = FRS.findPeople(features_arr,positions)
+            for (i,rect) in enumerate(rects):
+                cv2.rectangle(frame,(rect[0],rect[1]),(rect[0] + rect[2],rect[1]+rect[3]),(255,0,0)) #draw bounding box for the face
+                str_displayed = recog_data[i][0] + "-" + str(100* round(recog_data[i][1],4) ) + "%" # recog_data[i][0]+" - "+str(recog_data[i][1])+"%"
+                cv2.putText(frame,str_displayed,(rect[0],rect[1]),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),1,cv2.LINE_AA)
 
-def plot_face():
+        cv2.imshow("Frame", frame)
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("q"):
+            break
+
+def plot_face(FRS):
     pami_group = 'images/Group_Photo_2017.jpg'
     tmp = 'images/IMG_0150.JPG'
     frame = sm.imread(tmp)
@@ -179,7 +172,7 @@ def plot_face():
     fig,ax = plt.subplots(1)
     ax.imshow(frame)
 
-    recog_data = FRwithrects(frame, rects, landmarks)
+    recog_data = FRwithrects(FRS, frame, rects, landmarks)
     # === plot faces
     for (i,rect) in enumerate(rects):
         # plot face
@@ -214,7 +207,7 @@ def plot_face():
 if __name__ == '__main__':
     print('Hello world')
     FRS = FR_Service()
-    # test()
-    plot_face()
+    test(FRS)
+    # plot_face(FRS)
 
     print('Goodbye world')

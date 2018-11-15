@@ -11,10 +11,11 @@ Face detector and feature extractor are implemented by Tensorflow.
     7. python main.py
 
     for web
-    8. pip install flask (flask_sockets)
+    (confirm that: source activate tfpy3)
+    8. pip install flask flask_sockets
     9. sudo apt-get install nginx
     10. sudo apt-get install build-essential python-dev
-    11. sudo pip install uwsgi
+    11. pip install uwsgi
 
 
 ## References:

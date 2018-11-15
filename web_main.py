@@ -61,7 +61,7 @@ def index():
 
 @app.route('/fr',methods=["POST", 'GET']) # methods=["POST", 'GET']
 def real_time_fr():
-    global FRS
+    # global FRS
     # print("real_time_fr")
     if request.method == 'POST':
         # print(request.method)
@@ -75,15 +75,16 @@ def real_time_fr():
         pilimg = url2pilimg(base64_url)
         img = np.array(pilimg)
 
-        # 人脸检测
+        # face detection
         rects, landmarks = FRS.face_detector.detect_face(img,40)
         if len(rects)!=0:
-            # 提取特征
+            # extract features
             recog_data = FRwithrects(FRS, img, rects, landmarks)
-            # 在原图上画框
+            # draw on input image
             out_pim = drawbox(img, rects, ann=recog_data)
-        else: # 没有检测到则返回原图
+        else: # detect no face
             out_pim = pilimg
+
         # out_pim = pilimg
         out_img_url = pilimg2url(out_pim)
     else:
@@ -105,4 +106,4 @@ if __name__ == '__main__':
     # print('begin gevent server')
     # server.serve_forever()
     print('begin flask debug')
-    app.run(debug=False, threaded=False, port=5000)
+    app.run(debug=False, threaded=False, port=5002)
